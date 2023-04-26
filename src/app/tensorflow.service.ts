@@ -1,4 +1,7 @@
-import {Injectable} from '@angular/core';
+import { ApplicationSettings } from '@nativescript/core';
+import { Http } from '@nativescript/core';
+import { Injectable } from '@angular/core';
+import { io } from '@tensorflow/tfjs-core';
 import * as tf from '@tensorflow/tfjs';
 import {
   GPGPUContext,
@@ -22,8 +25,9 @@ export class TensorflowService {
       // Register kernels.
       const kernels = tf.getKernelsForBackend('webgl');
       kernels.forEach((kernelConfig) => {
-        const newKernelConfig
-          = Object.assign({}, kernelConfig, {backendName: 'custom-webgl',});
+        const newKernelConfig = Object.assign({}, kernelConfig, {
+          backendName: 'custom-webgl',
+        });
         tf.registerKernel(newKernelConfig);
       });
 
@@ -38,11 +42,17 @@ export class TensorflowService {
   }
 
   multiplyMatrices() {
-    const a = tf.tensor2d([[1, 2], [3, 4]]);
-    const b = tf.tensor2d([[5, 6], [7, 8]]);
+    const a = tf.tensor2d([
+      [1, 2],
+      [3, 4],
+    ]);
+    const b = tf.tensor2d([
+      [5, 6],
+      [7, 8],
+    ]);
     const result = tf.matMul(a, b);
     console.log('Matrix multiplication result:', result);
-    result.array().then(array => {
+    result.array().then((array) => {
       console.log('Matrix multiplication result:', array);
     });
     a.dispose();
@@ -54,7 +64,7 @@ export class TensorflowService {
     console.log('Loading model...');
     const model = await this.loadModel();
     console.log('Model loaded. Fine-tuning model...');
-    const {images, labels} = await this.loadMnistData();
+    const { images, labels } = await this.loadMnistData();
     console.log('MNIST data loaded. Fine-tuning model...');
     await this.fineTuneModel(model, images, labels, numEpochs, batchSize);
     console.log('Model fine-tuning completed.');
@@ -62,46 +72,73 @@ export class TensorflowService {
 
   private async loadModel(): Promise<tf.LayersModel> {
     console.log('Loading base model...');
+    Http.getString(
+      'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json'
+    ).then(
+      (result: string) => {
+        console.log(`Model JSON contents: ${result}`);
+      },
+      (error) => {
+        console.error(`Error fetching model JSON: ${error}`);
+      }
+    );
     const model = await tf.loadLayersModel(
-      'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json',
+      new NativescriptStorageHandler(
+        'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json'
+      ),
       {
         onProgress: (fraction) => {
           console.log(`Download progress: ${(fraction * 100).toFixed(2)}%`);
-        }
+        },
       }
     );
-    console.log('Base model loaded. Truncating and creating new output layer...');
+    console.log(
+      'Base model loaded. Truncating and creating new output layer...'
+    );
     const layer = model.getLayer('conv_pw_13_relu');
-    const truncatedModel = tf.model({inputs: model.inputs, outputs: layer.output});
+    const truncatedModel = tf.model({
+      inputs: model.inputs,
+      outputs: layer.output,
+    });
     const NUM_CLASSES = 10;
     const newOutputLayer = tf.layers.dense({
       units: NUM_CLASSES,
       activation: 'softmax',
       kernelInitializer: 'varianceScaling',
-      useBias: true
+      useBias: true,
     });
-    const newOutput = newOutputLayer.apply(truncatedModel.output) as tf.SymbolicTensor;
-    const fineTuningModel = tf.model({inputs: truncatedModel.inputs, outputs: newOutput});
+    const newOutput = newOutputLayer.apply(
+      truncatedModel.output
+    ) as tf.SymbolicTensor;
+    const fineTuningModel = tf.model({
+      inputs: truncatedModel.inputs,
+      outputs: newOutput,
+    });
     console.log('Fine-tuning model compiled.');
     fineTuningModel.compile({
       optimizer: tf.train.adam(0.0001),
       loss: 'categoricalCrossentropy',
-      metrics: ['accuracy']
+      metrics: ['accuracy'],
     });
     return fineTuningModel;
   }
 
-  private async loadMnistData(): Promise<{ images: tf.Tensor4D[]; labels: tf.Tensor1D[] }> {
+  private async loadMnistData(): Promise<{
+    images: tf.Tensor4D[];
+    labels: tf.Tensor1D[];
+  }> {
     console.log('Fetching MNIST data...');
-    const trainImagesUrl = 'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz';
-    const trainLabelsUrl = 'http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz';
+    const trainImagesUrl =
+      'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz';
+    const trainLabelsUrl =
+      'http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz';
     const [trainImagesResponse, trainLabelsResponse] = await Promise.all([
       fetch(trainImagesUrl),
-      fetch(trainLabelsUrl)
+      fetch(trainLabelsUrl),
     ]);
     const [trainImagesArrayBuffer, trainLabelsArrayBuffer] = await Promise.all([
       trainImagesResponse.arrayBuffer(),
-      trainLabelsResponse.arrayBuffer()
+      trainLabelsResponse.arrayBuffer(),
     ]);
     const trainImages = new Uint8Array(trainImagesArrayBuffer);
     const trainLabels = new Uint8Array(trainLabelsArrayBuffer);
@@ -114,7 +151,10 @@ export class TensorflowService {
     for (let i = 0; i < numImages; i++) {
       const image = tf.tidy(() => {
         const img = tf.tensor(
-          trainImages.slice(i * imageHeight * imageWidth + 16, (i + 1) * imageHeight * imageWidth + 16),
+          trainImages.slice(
+            i * imageHeight * imageWidth + 16,
+            (i + 1) * imageHeight * imageWidth + 16
+          ),
           [imageHeight, imageWidth],
           'int32'
         );
@@ -128,7 +168,7 @@ export class TensorflowService {
       });
       labels.push(label);
     }
-    return {images, labels};
+    return { images, labels };
   }
 
   private async fineTuneModel(
@@ -145,15 +185,15 @@ export class TensorflowService {
       console.log(`Epoch ${epoch + 1} / ${numEpochs}`);
       const indices = tf.util.createShuffledIndices(datasetSize);
       const indicesArray = Array.from(indices);
-      const shuffledImages = indicesArray.map(i => images[i]);
-      const shuffledLabels = indicesArray.map(i => labels[i]);
+      const shuffledImages = indicesArray.map((i) => images[i]);
+      const shuffledLabels = indicesArray.map((i) => labels[i]);
       for (let batch = 0; batch < numBatchesPerEpoch; batch++) {
         const start = batch * batchSize;
         const end = Math.min(start + batchSize, datasetSize);
         const batchImages = tf.stack(shuffledImages.slice(start, end));
         const batchLabels = tf.stack(shuffledLabels.slice(start, end));
         console.log(`Batch ${batch + 1} / ${numBatchesPerEpoch}`);
-        await model.fit(batchImages, batchLabels, {epochs: 1, batchSize});
+        await model.fit(batchImages, batchLabels, { epochs: 1, batchSize });
         batchImages.dispose();
         batchLabels.dispose();
         console.log(`Batch ${batch + 1} / ${numBatchesPerEpoch}`);
@@ -185,5 +225,43 @@ export class NativescriptPlatform implements tf.Platform {
 
   setTimeoutCustom?(functionRef: Function, delay: number): void {
     setTimeout(functionRef, delay);
+  }
+
+  isTypedArray(
+    a: unknown
+  ): a is Uint8Array | Float32Array | Int32Array | Uint8ClampedArray {
+    return (
+      a instanceof Float32Array ||
+      a instanceof Int32Array ||
+      a instanceof Uint8Array ||
+      a instanceof Uint8ClampedArray
+    );
+  }
+}
+
+class NativescriptStorageHandler implements io.IOHandler {
+  constructor(protected readonly modelPath: string) {}
+
+  async save(modelArtifacts: io.ModelArtifacts): Promise<io.SaveResult> {
+    ApplicationSettings.setString(
+      this.modelPath,
+      JSON.stringify(modelArtifacts)
+    );
+    return {
+      modelArtifactsInfo: modelArtifacts.modelTopology
+        ? {
+            dateSaved: new Date(),
+            modelTopologyType: 'JSON',
+          }
+        : null,
+    };
+  }
+
+  async load(): Promise<io.ModelArtifacts> {
+    const modelArtifactsJSON = ApplicationSettings.getString(this.modelPath);
+    if (!modelArtifactsJSON) {
+      throw new Error(`Cannot find model at ${this.modelPath}`);
+    }
+    return JSON.parse(modelArtifactsJSON) as io.ModelArtifacts;
   }
 }

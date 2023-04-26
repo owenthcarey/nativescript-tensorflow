@@ -1,6 +1,6 @@
-import {Canvas} from '@nativescript/canvas';
-import {Component} from '@angular/core'
-import {TensorflowService} from '~/app/tensorflow.service';
+import { Canvas } from '@nativescript/canvas';
+import { Component } from '@angular/core';
+import { TensorflowService } from '~/app/tensorflow.service';
 
 @Component({
   selector: 'ns-home',
@@ -14,7 +14,9 @@ export class HomeComponent {
   async onCanvasReady(args) {
     console.log('onCanvasReady()');
     const canvas = args.object as Canvas;
-    const webGLRenderingContext = canvas.getContext('webgl2') as unknown as WebGLRenderingContext
+    const webGLRenderingContext = canvas.getContext(
+      'webgl2'
+    ) as unknown as WebGLRenderingContext;
     await this.tensorflowService.init(webGLRenderingContext);
     this.tensorflowService.multiplyMatrices();
     this.tensorflowService.loadAndFineTuneModel();
