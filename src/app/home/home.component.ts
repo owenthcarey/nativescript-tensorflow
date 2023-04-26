@@ -14,8 +14,8 @@ export class HomeComponent {
   async onCanvasReady(args) {
     console.log('onCanvasReady()');
     const canvas = args.object as Canvas;
-    const webGLRenderingContext = canvas.getContext('webgl') as unknown as WebGLRenderingContext
-    // await this.tensorflowService.init(webGLRenderingContext);
+    const webGLRenderingContext = canvas.getContext('webgl2') as unknown as WebGLRenderingContext
+    await this.tensorflowService.init(webGLRenderingContext);
     this.tensorflowService.multiplyMatrices();
   }
 }
