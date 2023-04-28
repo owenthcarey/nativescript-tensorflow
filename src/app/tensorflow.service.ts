@@ -1,13 +1,14 @@
-import { ApplicationSettings } from '@nativescript/core';
-import { Http } from '@nativescript/core';
 import { Injectable } from '@angular/core';
 import { io } from '@tensorflow/tfjs-core';
 import * as tf from '@tensorflow/tfjs';
+import { File, Http, knownFolders } from '@nativescript/core';
 import {
   GPGPUContext,
   MathBackendWebGL,
   setWebGLContext,
 } from '@tensorflow/tfjs-backend-webgl';
+
+// declare var __non_webpack_require__;
 
 @Injectable({
   providedIn: 'root',
@@ -72,20 +73,22 @@ export class TensorflowService {
 
   private async loadModel(): Promise<tf.LayersModel> {
     console.log('Loading base model...');
-    Http.getString(
-      'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json'
-    ).then(
-      (result: string) => {
-        console.log(`Model JSON contents: ${result}`);
+    const remoteModelUrl =
+      'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json';
+    const localModelFileName = 'mobilenet_v1_0.25_224_model.json';
+    const documents = knownFolders.documents();
+    const localModelFile = documents.getFile(localModelFileName);
+    await Http.getString(remoteModelUrl).then(
+      async (result: string) => {
+        console.log('Model JSON contents:', result);
+        await localModelFile.writeText(result);
       },
       (error) => {
-        console.error(`Error fetching model JSON: ${error}`);
+        console.error('Error fetching model JSON:', error);
       }
     );
     const model = await tf.loadLayersModel(
-      new NativescriptStorageHandler(
-        'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json'
-      ),
+      new NativescriptStorageHandler(localModelFile.path),
       {
         onProgress: (fraction) => {
           console.log(`Download progress: ${(fraction * 100).toFixed(2)}%`);
@@ -107,9 +110,11 @@ export class TensorflowService {
       kernelInitializer: 'varianceScaling',
       useBias: true,
     });
-    const newOutput = newOutputLayer.apply(
+    const globalAveragePoolingLayer = tf.layers.globalAveragePooling2d({});
+    const pooledOutput = globalAveragePoolingLayer.apply(
       truncatedModel.output
     ) as tf.SymbolicTensor;
+    const newOutput = newOutputLayer.apply(pooledOutput) as tf.SymbolicTensor;
     const fineTuningModel = tf.model({
       inputs: truncatedModel.inputs,
       outputs: newOutput,
@@ -150,7 +155,7 @@ export class TensorflowService {
     console.log('Processing MNIST data...');
     for (let i = 0; i < numImages; i++) {
       const image = tf.tidy(() => {
-        const img = tf.tensor(
+        const img = tf.tensor2d(
           trainImages.slice(
             i * imageHeight * imageWidth + 16,
             (i + 1) * imageHeight * imageWidth + 16
@@ -158,13 +163,19 @@ export class TensorflowService {
           [imageHeight, imageWidth],
           'int32'
         );
-        const normalizedImg = tf.cast(img, 'float32').div(tf.scalar(255));
-        return normalizedImg.reshape([1, ...normalizedImg.shape, 1]);
+        const resizedImg = tf.image.resizeBilinear(
+          img.as4D(1, imageHeight, imageWidth, 1),
+          [224, 224]
+        );
+        const normalizedImg = tf
+          .cast(resizedImg, 'float32')
+          .div(tf.scalar(255));
+        return normalizedImg.tile([1, 1, 1, 3]);
       });
       images.push(image);
       const label = tf.tidy(() => {
         const lbl = tf.scalar(trainLabels[i + 8], 'int32');
-        return tf.oneHot(lbl, 10).as1D();
+        return tf.oneHot(lbl, 10).reshape([1, 10]);
       });
       labels.push(label);
     }
@@ -190,8 +201,8 @@ export class TensorflowService {
       for (let batch = 0; batch < numBatchesPerEpoch; batch++) {
         const start = batch * batchSize;
         const end = Math.min(start + batchSize, datasetSize);
-        const batchImages = tf.stack(shuffledImages.slice(start, end));
-        const batchLabels = tf.stack(shuffledLabels.slice(start, end));
+        const batchImages = tf.concat(shuffledImages.slice(start, end), 0);
+        const batchLabels = tf.concat(shuffledLabels.slice(start, end), 0);
         console.log(`Batch ${batch + 1} / ${numBatchesPerEpoch}`);
         await model.fit(batchImages, batchLabels, { epochs: 1, batchSize });
         batchImages.dispose();
@@ -243,10 +254,8 @@ class NativescriptStorageHandler implements io.IOHandler {
   constructor(protected readonly modelPath: string) {}
 
   async save(modelArtifacts: io.ModelArtifacts): Promise<io.SaveResult> {
-    ApplicationSettings.setString(
-      this.modelPath,
-      JSON.stringify(modelArtifacts)
-    );
+    const localModelFile = File.fromPath(this.modelPath);
+    await localModelFile.writeText(JSON.stringify(modelArtifacts));
     return {
       modelArtifactsInfo: modelArtifacts.modelTopology
         ? {
@@ -257,11 +266,25 @@ class NativescriptStorageHandler implements io.IOHandler {
     };
   }
 
+  // async load(): Promise<io.ModelArtifacts> {
+  //   console.time('fastRead');
+  //   if (!File.exists(this.modelPath)) {
+  //     throw new Error(`Cannot find model at ${this.modelPath}`);
+  //   }
+  //   const result = __non_webpack_require__(this.modelPath) as io.ModelArtifacts;
+  //   console.timeEnd('fastRead');
+  //   return result;
+  // }
+
   async load(): Promise<io.ModelArtifacts> {
-    const modelArtifactsJSON = ApplicationSettings.getString(this.modelPath);
+    console.time('slowRead');
+    const localModelFile = File.fromPath(this.modelPath);
+    const modelArtifactsJSON = await localModelFile.readText();
     if (!modelArtifactsJSON) {
       throw new Error(`Cannot find model at ${this.modelPath}`);
     }
-    return JSON.parse(modelArtifactsJSON) as io.ModelArtifacts;
+    const result = JSON.parse(modelArtifactsJSON) as io.ModelArtifacts;
+    console.timeEnd('slowRead');
+    return result;
   }
 }
