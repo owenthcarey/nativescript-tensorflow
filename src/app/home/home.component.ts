@@ -18,7 +18,8 @@ export class HomeComponent {
       'webgl2'
     ) as unknown as WebGLRenderingContext;
     await this.tensorflowService.init(webGLRenderingContext);
-    this.tensorflowService.multiplyMatrices();
-    this.tensorflowService.loadAndFineTuneModel();
+    // this.tensorflowService.multiplyMatrices();
+    this.tensorflowService.getting_started_tutorial();
+    // this.tensorflowService.loadAndFineTuneModel();
   }
 }

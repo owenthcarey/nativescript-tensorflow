@@ -2,6 +2,9 @@
   "name": "nativescript-tensorflow",
   "main": "./src/main.ts",
   "version": "1.0.0",
+  "scripts": {
+    "prettier": "npx prettier --write '**/*.{hbs,html,scss,ts}'"
+  },
   "private": true,
   "dependencies": {
     "@angular/animations": "~15.2.0",
@@ -36,6 +39,7 @@
     "https-browserify": "^1.0.0",
     "os-browserify": "^0.3.0",
     "path-browserify": "^1.0.1",
+    "prettier": "^2.8.8",
     "stream-browserify": "^3.0.0",
     "stream-http": "^3.2.0",
     "typescript": "~4.8.4",
