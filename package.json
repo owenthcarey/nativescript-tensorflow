@@ -15,6 +15,8 @@
     "@angular/platform-browser": "~15.2.0",
     "@angular/platform-browser-dynamic": "~15.2.0",
     "@angular/router": "~15.2.0",
+    "@nativescript-community/ui-collectionview": "^5.1.7",
+    "@nativescript-community/ui-material-bottom-navigation": "^7.1.3",
     "@nativescript/angular": "^15.0.0",
     "@nativescript/canvas": "^2.0.0-alpha.20",
     "@nativescript/canvas-polyfill": "^2.0.0-alpha.20",

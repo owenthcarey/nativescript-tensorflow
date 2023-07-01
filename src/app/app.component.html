@@ -1,3 +1,27 @@
-<GridLayout>
-  <page-router-outlet></page-router-outlet>
+<GridLayout rows="*, auto">
+  <MDBottomNavigation
+    selectedIndex="0"
+    (selectedIndexChanged)="onSelectedIndexChanged($event)"
+  >
+    <MDTabStrip>
+      <MDTabStripItem>
+        <Label text="Training"></Label>
+        <Image src="res://training_icon"></Image>
+      </MDTabStripItem>
+      <MDTabStripItem>
+        <Label text="Camera"></Label>
+        <Image src="res://camera_icon"></Image>
+      </MDTabStripItem>
+    </MDTabStrip>
+    <MDTabContentItem>
+      <GridLayout>
+        <page-router-outlet name="trainingTab"></page-router-outlet>
+      </GridLayout>
+    </MDTabContentItem>
+    <MDTabContentItem>
+      <GridLayout>
+        <page-router-outlet name="cameraTab"></page-router-outlet>
+      </GridLayout>
+    </MDTabContentItem>
+  </MDBottomNavigation>
 </GridLayout>
