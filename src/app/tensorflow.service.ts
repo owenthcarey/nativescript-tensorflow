@@ -69,20 +69,34 @@ export class TensorflowService {
     model.add(tf.layers.dense({ units: 1, inputShape: [1] }));
 
     // Prepare the model for training: Specify the loss and the optimizer.
-    model.compile({ loss: 'meanSquaredError', optimizer: 'sgd' });
+    model.compile({
+      loss: 'meanSquaredError',
+      optimizer: 'sgd',
+      metrics: ['mae'], // added mean absolute error to metrics
+    });
 
     // Generate some synthetic data for training. (y = 2x - 1)
     const xs = tf.tensor2d([-1, 0, 1, 2, 3, 4], [6, 1]);
     const ys = tf.tensor2d([-3, -1, 1, 3, 5, 7], [6, 1]);
 
+    // Split the data into training and validation sets.
+    // Here we use the first 4 examples for training and the last 2 for validation.
+    const trainXs = xs.slice([0, 0], [4, -1]);
+    const trainYs = ys.slice([0, 0], [4, -1]);
+    const valXs = xs.slice([4, 0], [-1, -1]);
+    const valYs = ys.slice([4, 0], [-1, -1]);
+
     // Define the onEpochEnd callback to print the loss
     const onEpochEnd = (epoch, logs) => {
-      console.log(`Epoch ${epoch}: loss = ${logs.loss}`);
+      console.log(
+        `Epoch ${epoch}: loss = ${logs.loss}, val_loss = ${logs.val_loss}, mae = ${logs.mae}, val_mae = ${logs.val_mae}`
+      );
     };
 
     // Train the model using the data.
-    await model.fit(xs, ys, {
+    await model.fit(trainXs, trainYs, {
       epochs: 250,
+      validationData: [valXs, valYs],
       callbacks: { onEpochEnd },
     });
   }
