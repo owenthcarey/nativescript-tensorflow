@@ -1,4 +1,26 @@
 <ActionBar title="Training"></ActionBar>
 <GridLayout rows="*">
-  <Label text="Training"></Label>
+  <CollectionView
+    colWidth="100%"
+    orientation="vertical"
+    rowHeight="15%"
+    [items]="experiments"
+    (itemTap)="onItemTap($event)"
+  >
+    <ng-template let-experiment="item">
+      <StackLayout
+        height="100%"
+        width="100%"
+        [style.backgroundColor]="experiment.color"
+      >
+        <Label
+          class="text-white"
+          horizontalAlignment="center"
+          textWrap="true"
+          verticalAlignment="center"
+          [text]="experiment.name"
+        ></Label>
+      </StackLayout>
+    </ng-template>
+  </CollectionView>
 </GridLayout>
