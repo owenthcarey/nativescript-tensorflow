@@ -4,3 +4,12 @@
 Button.-primary {
   font-size: 18;
 }
+
+/*
+https://v7.docs.nativescript.org/ui/components/icon-fonts
+File name: MaterialIcons-Regular.ttf
+Font name: Material Icons
+*/
+.material-icon {
+  font-family: "Material Icons", "MaterialIcons-Regular";
+}
