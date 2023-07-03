@@ -9,6 +9,10 @@ import { HomeComponent } from '~/app/home/home.component';
 import { NativeScriptMaterialBottomNavigationModule } from '@nativescript-community/ui-material-bottom-navigation/angular';
 
 registerElement('Canvas', () => Canvas);
+registerElement(
+  'LineChart',
+  () => require('@nativescript-community/ui-chart/charts').LineChart
+);
 
 @NgModule({
   bootstrap: [AppComponent],
