@@ -6,6 +6,7 @@ import { Experiment } from '~/app/core/models/experiment.model';
   moduleId: module.id,
   selector: 'ns-training',
   templateUrl: 'training.component.html',
+  styleUrls: ['training.component.css'],
 })
 export class TrainingComponent {
   experiments: Experiment[];
@@ -15,6 +16,9 @@ export class TrainingComponent {
       { name: 'Experiment 1', route: 'experiment1' },
       { name: 'Experiment 2', route: 'experiment2' },
       { name: 'Experiment 3', route: 'experiment3' },
+      { name: 'Experiment 4', route: 'experiment4' },
+      { name: 'Experiment 5', route: 'experiment5' },
+      { name: 'Experiment 6', route: 'experiment6' },
     ];
   }
 

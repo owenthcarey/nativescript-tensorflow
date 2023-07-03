@@ -3,23 +3,27 @@
   <CollectionView
     colWidth="100%"
     orientation="vertical"
-    rowHeight="15%"
+    rowHeight="180"
     [items]="experiments"
     (itemTap)="onItemTap($event)"
   >
     <ng-template let-experiment="item">
-      <StackLayout
-        height="100%"
-        width="100%"
-        [style.backgroundColor]="experiment.color"
-      >
-        <Label
-          class="text-white"
-          horizontalAlignment="center"
-          textWrap="true"
-          verticalAlignment="center"
-          [text]="experiment.name"
-        ></Label>
+      <StackLayout padding="10">
+        <GridLayout
+          class="card"
+          height="100%"
+          width="100%"
+          borderRadius="10"
+          style.backgroundColor="grey"
+        >
+          <Label
+            class="text-white"
+            horizontalAlignment="center"
+            textWrap="true"
+            verticalAlignment="center"
+            [text]="experiment.name"
+          ></Label>
+        </GridLayout>
       </StackLayout>
     </ng-template>
   </CollectionView>
