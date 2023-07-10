@@ -26,6 +26,7 @@
     "@nativescript/canvas-polyfill": "^2.0.0-alpha.20",
     "@nativescript/core": "~8.5.0",
     "@nativescript/theme": "~3.0.2",
+    "@nativescript/zip": "^6.0.0",
     "@tensorflow/tfjs": "^4.4.0",
     "@tensorflow/tfjs-backend-webgl": "^4.4.0",
     "rxjs": "~7.6.0",

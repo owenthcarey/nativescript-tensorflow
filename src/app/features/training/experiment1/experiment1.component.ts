@@ -11,6 +11,7 @@ import { LineChart } from '@nativescript-community/ui-chart/charts/LineChart';
 import { LineDataSet } from '@nativescript-community/ui-chart/data/LineDataSet';
 import { LineData } from '@nativescript-community/ui-chart/data/LineData';
 
+// https://keras.io/examples/vision/image_classification_from_scratch/
 @Component({
   moduleId: module.id,
   selector: 'ns-experiment1',
@@ -50,7 +51,8 @@ export class Experiment1Component implements OnInit, OnDestroy {
       'webgl2'
     ) as unknown as WebGLRenderingContext;
     await this.experiment1Service.init(webGLRenderingContext);
-    this.experiment1Service.multiplyMatrices();
+    // this.experiment1Service.multiplyMatrices();
+    this.experiment1Service.downloadAndUnzipDataset();
   }
 
   onChartLoaded(args) {

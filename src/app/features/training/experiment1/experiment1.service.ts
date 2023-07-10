@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { io } from '@tensorflow/tfjs-core';
 import * as tf from '@tensorflow/tfjs';
-import { File, Http, knownFolders } from '@nativescript/core';
+import { File, Http, knownFolders, path } from '@nativescript/core';
 import {
   GPGPUContext,
   MathBackendWebGL,
   setWebGLContext,
 } from '@tensorflow/tfjs-backend-webgl';
+import { Zip } from '@nativescript/zip';
 
 @Injectable({
   providedIn: 'root',
@@ -97,6 +98,38 @@ export class Experiment1Service {
       validationData: [valXs, valYs],
       callbacks: { onEpochEnd },
     });
+  }
+
+  downloadAndUnzipDataset() {
+    let tempFolder = knownFolders.temp();
+    let zipFile = path.join(tempFolder.path, 'kagglecatsanddogs_5340.zip');
+    let datasetFolder = path.join(tempFolder.path, 'PetImages');
+
+    console.log('Downloading dataset...');
+    Http.getFile(
+      'https://download.microsoft.com/download/3/E/1/3E1C3F21-ECDB-4869-8368-6DEBA77B919F/kagglecatsanddogs_5340.zip',
+      zipFile
+    )
+      .then((file) => {
+        console.log('Download complete. Unzipping...');
+
+        Zip.unzip({
+          archive: zipFile,
+          directory: datasetFolder,
+          onProgress: (percent) => {
+            console.log(`Unzip progress: ${percent}`);
+          },
+        })
+          .then(() => {
+            console.log('Unzipping complete.');
+          })
+          .catch((error) => {
+            console.error('Error during unzipping: ', error);
+          });
+      })
+      .catch((error) => {
+        console.error('Error during download: ', error);
+      });
   }
 }
 
