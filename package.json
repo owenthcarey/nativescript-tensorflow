@@ -29,6 +29,7 @@
     "@nativescript/zip": "^6.0.0",
     "@tensorflow/tfjs": "^4.4.0",
     "@tensorflow/tfjs-backend-webgl": "^4.4.0",
+    "@triniwiz/nativescript-downloader": "^3.0.1",
     "rxjs": "~7.6.0",
     "zone.js": "~0.13.0"
   },

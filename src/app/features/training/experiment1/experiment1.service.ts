@@ -8,6 +8,11 @@ import {
   setWebGLContext,
 } from '@tensorflow/tfjs-backend-webgl';
 import { Zip } from '@nativescript/zip';
+import {
+  Downloader,
+  ProgressEventData,
+  DownloadEventData,
+} from '@triniwiz/nativescript-downloader';
 
 @Injectable({
   providedIn: 'root',
@@ -101,23 +106,30 @@ export class Experiment1Service {
   }
 
   downloadAndUnzipDataset() {
-    let tempFolder = knownFolders.temp();
-    let zipFile = path.join(tempFolder.path, 'kagglecatsanddogs_5340.zip');
-    let datasetFolder = path.join(tempFolder.path, 'PetImages');
+    const tempFolder = knownFolders.temp();
+    const zipFile = path.join(tempFolder.path, 'kagglecatsanddogs_5340.zip');
+    const datasetFolder = path.join(tempFolder.path, 'PetImages');
 
     console.log('Downloading dataset...');
-    Http.getFile(
-      'https://download.microsoft.com/download/3/E/1/3E1C3F21-ECDB-4869-8368-6DEBA77B919F/kagglecatsanddogs_5340.zip',
-      zipFile
-    )
-      .then((file) => {
+    const downloader = new Downloader();
+    const datasetDownloadId = downloader.createDownload({
+      url: 'https://download.microsoft.com/download/3/E/1/3E1C3F21-ECDB-4869-8368-6DEBA77B919F/kagglecatsanddogs_5340.zip',
+      path: tempFolder.path,
+      fileName: 'kagglecatsanddogs_5340.zip',
+    });
+
+    downloader
+      .start(datasetDownloadId, (progressData: ProgressEventData) => {
+        console.log(`Download progress: ${progressData.value}%`);
+      })
+      .then((completed: DownloadEventData) => {
         console.log('Download complete. Unzipping...');
 
         Zip.unzip({
           archive: zipFile,
           directory: datasetFolder,
           onProgress: (percent) => {
-            console.log(`Unzip progress: ${percent}`);
+            console.log(`Unzip progress: ${percent}%`);
           },
         })
           .then(() => {
