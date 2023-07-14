@@ -1,28 +1,28 @@
 import { Injectable } from '@angular/core';
 import {
   File,
-  knownFolders,
-  Image,
+  Folder,
   ImageAsset,
   ImageSource,
+  knownFolders,
   path,
 } from '@nativescript/core';
 import { Zip } from '@nativescript/zip';
 import {
   Downloader,
-  ProgressEventData,
   DownloadEventData,
+  ProgressEventData,
 } from '@triniwiz/nativescript-downloader';
 import { TensorflowBaseService } from '~/app/core/services/tensorflow.base-service';
+import * as tf from '@tensorflow/tfjs';
 import {
-  Tensor,
-  tensor4d,
-  util,
-  sequential,
   layers,
-  train,
-  tensor3d,
+  sequential,
+  Tensor,
   tensor2d,
+  tensor3d,
+  tensor4d,
+  train,
 } from '@tensorflow/tfjs';
 
 @Injectable({
@@ -79,43 +79,68 @@ export class Experiment1Service extends TensorflowBaseService {
     const tempFolder = knownFolders.temp();
     const datasetFolder = path.join(tempFolder.path, 'PetImages');
 
-    let dogImages = [];
-    let catImages = [];
+    // Get all the files inside the Dog and Cat folders
+    const dogFolder = Folder.fromPath(path.join(datasetFolder, 'Dog'));
+    const dogImages = dogFolder
+      .getEntitiesSync()
+      .filter((entity) => entity instanceof File && entity.extension === '.jpg')
+      .map((file) => file.path);
 
-    // Here you will need to provide a way to get all the files inside the Dog and Cat folders
-    // This can be achieved using NativeScript's `Folder` and `File` APIs
-
-    // pseudo code
-    // const dogFolder = Folder.fromPath(path.join(datasetFolder, 'Dog'));
-    // dogImages = dogFolder.getEntitiesSync().filter(entity => entity.extension === '.jpg');
-
-    // do the same for catImages
+    const catFolder = Folder.fromPath(path.join(datasetFolder, 'Cat'));
+    const catImages = catFolder
+      .getEntitiesSync()
+      .filter((entity) => entity instanceof File && entity.extension === '.jpg')
+      .map((file) => file.path);
 
     // Now that we have all the file paths, let's load, decode and preprocess them:
     const allImages = dogImages.concat(catImages);
     const allLabels = new Array(dogImages.length)
-      .fill(0)
-      .concat(new Array(catImages.length).fill(1)); // 0 for dog, 1 for cat
+      .fill([0]) // 0 for dog
+      .concat(new Array(catImages.length).fill([1])); // 1 for cat
 
     const imageTensors = [];
     for (let imagePath of allImages) {
       const imageAsset = new ImageAsset(imagePath);
       const imageSource = await ImageSource.fromAsset(imageAsset);
-      const imageTensor = tensor3d(imageSource.toTensor());
+      const imageTensor = await this.imageSourceToTensor(imageSource);
       imageTensors.push(imageTensor);
     }
 
-    // Now we have all our image tensors and labels ready to be converted into a tf.data.Dataset
-    const imageDataset = tensor4d(imageTensors);
-    const labelDataset = tensor2d(allLabels, [allLabels.length, 1]); // make sure the label is a 2D tensor
-    const dataset = util.zipDataset([imageDataset, labelDataset]);
+    // Convert labels into one-hot encoded tensors
+    const labelTensors = allLabels.map((label) => tf.tensor1d(label, 'int32'));
 
-    return dataset;
+    // Now we have all our image tensors and labels ready to be converted into a tf.data.Dataset
+    const imageDataset = tf.data.array(imageTensors).batch(32);
+    const labelDataset = tf.data.array(labelTensors).batch(32);
+
+    return tf.data.zip({ xs: imageDataset, ys: labelDataset });
+  }
+
+  async imageSourceToTensor(imageSource: ImageSource): Promise<Tensor> {
+    // Get bitmap for both android and ios
+    let bmp;
+    if (isAndroid) {
+      bmp = imageSource.android;
+    } else {
+      bmp = imageSource.ios;
+    }
+    const pixels = [];
+    for (let i = 0; i < bmp.height; i++) {
+      for (let j = 0; j < bmp.width; j++) {
+        const pixel = bmp.getPixel(j, i);
+        pixels.push([
+          (pixel & 0xff0000) >> 16, // red
+          (pixel & 0x00ff00) >> 8, // green
+          pixel & 0x0000ff, // blue
+        ]);
+      }
+    }
+    // Convert pixel data to a tensor
+    return tensor3d(pixels, [bmp.height, bmp.width, 3]).div(255);
   }
 
   buildModel() {
     const model = sequential();
-    model.add(layers.rescaling({ scale: 1 / 255, offset: 0 }));
     model.add(
       layers.conv2d({
         inputShape: [180, 180, 3],
@@ -124,6 +149,7 @@ export class Experiment1Service extends TensorflowBaseService {
         activation: 'relu',
       })
     );
+    model.add(layers.rescaling({ scale: 1 / 255, offset: 0 }));
     model.add(layers.maxPooling2d({ poolSize: 2 }));
     model.add(
       layers.conv2d({ filters: 64, kernelSize: 3, activation: 'relu' })
@@ -135,7 +161,7 @@ export class Experiment1Service extends TensorflowBaseService {
     model.add(layers.maxPooling2d({ poolSize: 2 }));
     model.add(layers.flatten());
     model.add(layers.dense({ units: 64, activation: 'relu' }));
-    model.add(layers.dense({ units: 1, activation: 'sigmoid' })); // binary output
+    model.add(layers.dense({ units: 1, activation: 'sigmoid' }));
     return model;
   }
 
@@ -151,7 +177,7 @@ export class Experiment1Service extends TensorflowBaseService {
   async runInference(model, imagePath) {
     const imageAsset = new ImageAsset(imagePath);
     const imageSource = await ImageSource.fromAsset(imageAsset);
-    const imageTensor = tensor3d(imageSource.toTensor());
+    const imageTensor = await this.imageSourceToTensor(imageSource);
     const prediction = model.predict(imageTensor.expandDims(0)) as Tensor; // make sure it's a 4D tensor
     const score = prediction.dataSync()[0];
     console.log(
@@ -160,10 +186,27 @@ export class Experiment1Service extends TensorflowBaseService {
   }
 
   async main() {
+    console.log('Starting the process...');
+
+    console.log('Downloading and unzipping the dataset...');
     this.downloadAndUnzipDataset();
+
+    console.log('Loading and preprocessing the images...');
     const dataset = await this.loadAndPreprocessImages();
+    console.log('Finished loading and preprocessing the images.');
+
+    console.log('Building the model...');
     const model = this.buildModel();
+    console.log('Finished building the model.');
+
+    console.log('Training the model...');
     this.trainModel(model, dataset);
+    console.log('Finished training the model.');
+
+    console.log('Running inference...');
     await this.runInference(model, 'PetImages/Cat/6779.jpg');
+    console.log('Finished running inference.');
+
+    console.log('Finished the process!');
   }
 }

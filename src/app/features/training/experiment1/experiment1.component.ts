@@ -52,7 +52,8 @@ export class Experiment1Component implements OnInit, OnDestroy {
     ) as unknown as WebGLRenderingContext;
     await this.experiment1Service.init(webGLRenderingContext);
     // this.experiment1Service.multiplyMatrices();
-    this.experiment1Service.downloadAndUnzipDataset();
+    // this.experiment1Service.downloadAndUnzipDataset();
+    this.experiment1Service.main();
   }
 
   onChartLoaded(args) {
