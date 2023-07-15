@@ -9,12 +9,24 @@ import { RouterExtensions } from '@nativescript/angular';
 })
 export class TrainingComponent {
   experiments = [
-    { name: 'Experiment 1', route: 'experiment1' },
-    { name: 'Experiment 2', route: 'experiment2' },
-    { name: 'Experiment 3', route: 'experiment3' },
-    { name: 'Experiment 4', route: 'experiment4' },
-    { name: 'Experiment 5', route: 'experiment5' },
-    { name: 'Experiment 6', route: 'experiment6' },
+    { name: 'Image Classification from Scratch', route: 'experiment1' },
+    { name: 'Simple MNIST Convnet', route: 'vision/mnist-convnet' },
+    {
+      name: 'Image Classification via Fine-Tuning with EfficientNet',
+      route: 'vision/image-classification-efficientnet-fine-tuning',
+    },
+    {
+      name: 'Image Classification with Vision Transformer',
+      route: 'vision/image-classification-with-vision-transformer',
+    },
+    {
+      name: 'Image Classification Using BigTransfer (BiT)',
+      route: 'vision/bit',
+    },
+    {
+      name: 'Classification Using Attention-Based Deep Multiple Instance Learning (MIL)',
+      route: 'vision/attention-mil-classification',
+    },
   ];
 
   constructor(private routerExtensions: RouterExtensions) {}

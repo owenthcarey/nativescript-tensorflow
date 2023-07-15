@@ -1,10 +1,23 @@
-<ActionBar title="Experiment1"></ActionBar>
+<ActionBar title="Image Classification from Scratch"></ActionBar>
 <GridLayout>
   <Canvas visibility="visible" (ready)="onCanvasReady($event)"></Canvas>
   <!--  <MDSlider value="50" minValue="0" maxValue="100"></MDSlider>-->
   <!--  <Slider value="50" minValue="0" maxValue="100"></Slider>-->
   <!--  <MDCardView rippleColor="blue"  width="100" height="100"></MDCardView>-->
   <!--  <MDButton rippleColor="blue" text="text button"></MDButton>-->
-  <LineChart width="300" height="400" (loaded)="onChartLoaded($event)">
-  </LineChart>
+  <FlexboxLayout flexDirection="column">
+    <Label text="Download dataset" row="0"></Label>
+    <progress value="25" maxValue="100" row="4"></progress>
+    <Label text="Unzip dataset" row="0"></Label>
+    <progress value="25" maxValue="100" row="4"></progress>
+    <Label text="Filter out corrupted images" row="0"></Label>
+    <progress value="25" maxValue="100" row="4"></progress>
+    <Label text="Visualize the data" row="0"></Label>
+    <Label text="Use image data augmentation" row="0"></Label>
+    <Label text="Visualize the model" row="0"></Label>
+    <Label text="Train the model" row="0"></Label>
+    <LineChart width="300" height="400" (loaded)="onChartLoaded($event)">
+    </LineChart>
+    <Label text="Run inference on new data" row="0"></Label>
+  </FlexboxLayout>
 </GridLayout>
