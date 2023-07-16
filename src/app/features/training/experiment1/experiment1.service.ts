@@ -15,67 +15,71 @@ import {
 } from '@triniwiz/nativescript-downloader';
 import { TensorflowBaseService } from '~/app/core/services/tensorflow.base-service';
 import * as tf from '@tensorflow/tfjs';
-import {
-  layers,
-  sequential,
-  Tensor,
-  tensor2d,
-  tensor3d,
-  tensor4d,
-  train,
-} from '@tensorflow/tfjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class Experiment1Service extends TensorflowBaseService {
   downloadAndUnzipDataset() {
-    const tempFolder = knownFolders.temp();
-    const zipFile = path.join(tempFolder.path, 'kagglecatsanddogs_5340.zip');
-    const datasetFolder = path.join(tempFolder.path, 'PetImages');
-    if (File.exists(zipFile)) {
-      console.log('Zip file already exists. Skipping download...');
-      this.unzipDataset(zipFile, datasetFolder);
-    } else {
-      console.log('Downloading dataset...');
-      const downloader = new Downloader();
-      const datasetDownloadId = downloader.createDownload({
-        url: 'https://download.microsoft.com/download/3/E/1/3E1C3F21-ECDB-4869-8368-6DEBA77B919F/kagglecatsanddogs_5340.zip',
-        path: tempFolder.path,
-        fileName: 'kagglecatsanddogs_5340.zip',
-      });
-      downloader
-        .start(datasetDownloadId, (progressData: ProgressEventData) => {
-          console.log(`Download progress: ${progressData.value}%`);
-        })
-        .then((completed: DownloadEventData) => {
-          console.log('Download complete.');
-          this.unzipDataset(zipFile, datasetFolder);
+    return new Promise<void>((resolve, reject) => {
+      const tempFolder = knownFolders.temp();
+      const zipFile = path.join(tempFolder.path, 'kagglecatsanddogs_5340.zip');
+      const datasetFolder = path.join(tempFolder.path, 'PetImages');
+      if (File.exists(zipFile)) {
+        console.log('Zip file already exists. Skipping download...');
+        this.unzipDataset(zipFile, datasetFolder)
+          .then(() => resolve())
+          .catch((err) => reject(err));
+      } else {
+        console.log('Downloading dataset...');
+        const downloader = new Downloader();
+        const datasetDownloadId = downloader.createDownload({
+          url: 'https://download.microsoft.com/download/3/E/1/3E1C3F21-ECDB-4869-8368-6DEBA77B919F/kagglecatsanddogs_5340.zip',
+          path: tempFolder.path,
+          fileName: 'kagglecatsanddogs_5340.zip',
+        });
+        downloader
+          .start(datasetDownloadId, (progressData: ProgressEventData) => {
+            console.log(`Download progress: ${progressData.value}%`);
+          })
+          .then((completed: DownloadEventData) => {
+            console.log('Download complete.');
+            this.unzipDataset(zipFile, datasetFolder)
+              .then(() => resolve())
+              .catch((err) => reject(err));
+          })
+          .catch((error) => {
+            console.error('Error during download: ', error);
+            reject(error);
+          });
+      }
+    });
+  }
+
+  unzipDataset(zipFile: string, datasetFolder: string) {
+    return new Promise<void>((resolve, reject) => {
+      console.log('Unzipping...');
+      Zip.unzip({
+        archive: zipFile,
+        directory: datasetFolder,
+        onProgress: (percent) => {
+          console.log(`Unzip progress: ${percent}%`);
+        },
+      })
+        .then(() => {
+          console.log('Unzipping complete.');
+          resolve();
         })
         .catch((error) => {
-          console.error('Error during download: ', error);
+          console.error('Error during unzipping: ', error);
+          reject(error);
         });
-    }
+    });
   }
 
-  unzipDataset(zipFile, datasetFolder) {
-    console.log('Unzipping...');
-    Zip.unzip({
-      archive: zipFile,
-      directory: datasetFolder,
-      onProgress: (percent) => {
-        console.log(`Unzip progress: ${percent}%`);
-      },
-    })
-      .then(() => {
-        console.log('Unzipping complete.');
-      })
-      .catch((error) => {
-        console.error('Error during unzipping: ', error);
-      });
-  }
-
-  async loadAndPreprocessImages() {
+  async loadAndPreprocessImages(): Promise<
+    tf.data.Dataset<tf.TensorContainer>
+  > {
     const tempFolder = knownFolders.temp();
     const datasetFolder = path.join(tempFolder.path, 'PetImages');
 
@@ -116,7 +120,7 @@ export class Experiment1Service extends TensorflowBaseService {
     return tf.data.zip({ xs: imageDataset, ys: labelDataset });
   }
 
-  async imageSourceToTensor(imageSource: ImageSource): Promise<Tensor> {
+  async imageSourceToTensor(imageSource: ImageSource): Promise<tf.Tensor> {
     // Get bitmap for both android and ios
     let bmp;
     if (isAndroid) {
@@ -136,49 +140,52 @@ export class Experiment1Service extends TensorflowBaseService {
       }
     }
     // Convert pixel data to a tensor
-    return tensor3d(pixels, [bmp.height, bmp.width, 3]).div(255);
+    return tf.tensor3d(pixels, [bmp.height, bmp.width, 3]).div(255);
   }
 
-  buildModel() {
-    const model = sequential();
+  buildModel(): tf.LayersModel {
+    const model = tf.sequential();
     model.add(
-      layers.conv2d({
+      tf.layers.conv2d({
         inputShape: [180, 180, 3],
         filters: 32,
         kernelSize: 3,
         activation: 'relu',
       })
     );
-    model.add(layers.rescaling({ scale: 1 / 255, offset: 0 }));
-    model.add(layers.maxPooling2d({ poolSize: 2 }));
+    model.add(tf.layers.rescaling({ scale: 1 / 255, offset: 0 }));
+    model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
     model.add(
-      layers.conv2d({ filters: 64, kernelSize: 3, activation: 'relu' })
+      tf.layers.conv2d({ filters: 64, kernelSize: 3, activation: 'relu' })
     );
-    model.add(layers.maxPooling2d({ poolSize: 2 }));
+    model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
     model.add(
-      layers.conv2d({ filters: 128, kernelSize: 3, activation: 'relu' })
+      tf.layers.conv2d({ filters: 128, kernelSize: 3, activation: 'relu' })
     );
-    model.add(layers.maxPooling2d({ poolSize: 2 }));
-    model.add(layers.flatten());
-    model.add(layers.dense({ units: 64, activation: 'relu' }));
-    model.add(layers.dense({ units: 1, activation: 'sigmoid' }));
+    model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
+    model.add(tf.layers.flatten());
+    model.add(tf.layers.dense({ units: 64, activation: 'relu' }));
+    model.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
     return model;
   }
 
-  trainModel(model, dataset) {
+  trainModel(
+    model: tf.LayersModel,
+    dataset: tf.data.Dataset<tf.TensorContainer>
+  ) {
     model.compile({
-      optimizer: train.adam(1e-3),
+      optimizer: tf.train.adam(1e-3),
       loss: 'binaryCrossentropy',
       metrics: ['accuracy'],
     });
     model.fitDataset(dataset, { epochs: 10, batchSize: 32 });
   }
 
-  async runInference(model, imagePath) {
+  async runInference(model: tf.LayersModel, imagePath: string) {
     const imageAsset = new ImageAsset(imagePath);
     const imageSource = await ImageSource.fromAsset(imageAsset);
     const imageTensor = await this.imageSourceToTensor(imageSource);
-    const prediction = model.predict(imageTensor.expandDims(0)) as Tensor; // make sure it's a 4D tensor
+    const prediction = model.predict(imageTensor.expandDims(0)) as tf.Tensor; // make sure it's a 4D tensor
     const score = prediction.dataSync()[0];
     console.log(
       `This image is ${(1 - score) * 100}% cat and ${score * 100}% dog.`
@@ -189,7 +196,7 @@ export class Experiment1Service extends TensorflowBaseService {
     console.log('Starting the process...');
 
     console.log('Downloading and unzipping the dataset...');
-    this.downloadAndUnzipDataset();
+    await this.downloadAndUnzipDataset();
 
     console.log('Loading and preprocessing the images...');
     const dataset = await this.loadAndPreprocessImages();
