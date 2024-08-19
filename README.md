@@ -24,7 +24,7 @@ Clone the repository and navigate to the project directory:
 
 ```bash
 git clone https://github.com/owenthcarey/nativescript-tensorflow.git
-cd your-repo-name
+cd nativescript-tensorflow
 ```
 
 Install dependencies:
